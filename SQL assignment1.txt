@@ -1,0 +1,127 @@
+CREATE DATABASE ineuron_assignments
+USE ineuron_assignments
+
+--------------------------------- TASK 1-------------------------------------------
+
+CREATE OR REPLACE TABLE shopping_history(
+product VARCHAR NOT NULL,
+quantity INT NOT NULL,
+unit_price INT NOT NULL);
+
+SELECT * FROM shopping_history
+
+INSERT INTO shopping_history VALUES('milk',3,10),
+('bread',7,3),
+('bread',5,2);
+
+
+SELECT product,SUM(quantity*unit_price) AS total_price FROM shopping_history
+GROUP BY product
+ORDER BY product DESC;
+
+-----------------------*------------------------------*-----------------------------------------------------------------------------
+
+----------------------------------------------TASK 2------------------------------------------------
+
+CREATE OR REPLACE TABLE phones(
+name VARCHAR(20) NOT NULL UNIQUE,
+phone_number INT NOT NULL UNIQUE);
+
+INSERT INTO phones VALUES('Jack',1234),
+('Lena',3333),
+('Mark',9999),
+('Anna',7582),
+('John',6356),
+('Addison',4315),
+('Kate',8003),
+('Ginny',9831)
+
+SELECT * FROM phones;
+
+CREATE OR REPLACE TABLE calls(
+id INT NOT NULL,
+caller INT NOT NULL,
+callee INT NOT NULL,
+duration INT NOT NULL,
+UNIQUE(id));
+
+INSERT INTO calls VALUES(25,1234,7582,8),
+(7,9999,7582,1),
+(18,9999,3333,4),
+(2,7582,3333,3),
+(3,3333,1234,1),
+(21,3333,1234,1),
+(65,8003,9831,7),
+(100,9831,8003,3),
+(145,4315,9831,18);
+
+SELECT * FROM calls
+
+--1) Subquery method
+
+SELECT p.name FROM phones p INNER JOIN (SELECT number,SUM(duration) AS total_duration FROM
+(SELECT id,caller as number,duration FROM calls UNION ALL
+SELECT id,callee as number,duration FROM calls)
+GROUP BY number
+HAVING total_duration>=10) x
+ON p.phone_number=x.number
+ORDER BY name;
+
+--2) CTE method
+
+WITH number_wise_duration(number,total_duration) AS(
+SELECT number,SUM(duration) AS total_duration FROM
+  (SELECT caller as number,duration FROM calls UNION ALL
+   SELECT callee as number,duration FROM calls)
+GROUP BY number)
+SELECT name FROM
+phones p INNER JOIN
+number_wise_duration n
+ON p.phone_number = n.number
+WHERE total_duration>=10
+ORDER BY name;
+
+--------------------------------------------------*--------------------------------*-----------------------------
+
+--------------------------------------------Task 3------------------------------------------------------------
+
+CREATE OR REPLACE TABLE transactions(
+amount INT NOT NULL,
+date DATE NOT NULL);
+
+INSERT INTO transactions VALUES(1000,'2020-01-06'),
+(-10,'2020-01-14'),
+(-75,'2020-01-20'),
+(-5,'2020-01-25'),
+(-4,'2020-01-29'),
+(2000,'2020-03-10'),
+(-75,'2020-03-12'),
+(-20,'2020-03-15'),
+(40,'2020-03-15'),
+(-50,'2020-03-17'),
+(200,'2020-10-10'),
+(-200,'2020-10-10');
+
+--Step1) Extracted Month wise Sum and Count of Credit card transactions(Value<0)
+
+SELECT MONTH(date) as month,SUM(amount) monthly_net_amount,COUNT(amount<0) credit_card_tran FROM transactions
+WHERE amount<0
+GROUP BY month
+
+--Step2)Extracted count of months which have count>=3 and Sum<=100 for credit card transactions
+
+SELECT COUNT(*) AS no_charge_count FROM credit_card_transaction_table
+WHERE credit_card_tran>=3 AND monthly_net_amount<=-100
+
+--Step3) By using CTE formed a temporary table and extracted the desired result
+
+
+WITH credit_card_transaction_table(month,monthly_net_amount,credit_card_tran) AS(
+SELECT MONTH(date) as month,SUM(amount) monthly_net_amount,COUNT(amount<0) credit_card_tran FROM transactions
+WHERE amount<0
+GROUP BY month)
+SELECT SUM(amount)-5*(12-(SELECT COUNT(*) AS no_charge_count FROM credit_card_transaction_table
+WHERE credit_card_tran>=3 AND monthly_net_amount<=-100)) AS balance FROM transactions
+
+
+------------------*------------------------------*-----------------------------------*-----------------------*-----------
